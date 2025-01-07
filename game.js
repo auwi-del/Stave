@@ -275,36 +275,58 @@ function updateEnemies(delta) {
   });
 }
 
+// 绘制玩家
+function drawPlayer(ctx) {
+  ctx.fillStyle = '#00FF00';
+  ctx.fillRect(
+    config.width/2 - config.tileSize/2,
+    config.height/2 - config.tileSize/2,
+    config.tileSize,
+    config.tileSize
+  );
+}
+
+// 绘制资源
+function drawResources(ctx) {
+  gameState.resources.forEach(resource => {
+    ctx.fillStyle = resource.type === 'wood' ? '#8B4513' : '#808080';
+    ctx.fillRect(
+      resource.x - gameState.player.x + config.width/2,
+      resource.y - gameState.player.y + config.height/2,
+      config.tileSize,
+      config.tileSize
+    );
+  });
+}
+
 // 绘制敌人
 function drawEnemies(ctx) {
   gameState.enemies.forEach(enemy => {
     ctx.fillStyle = '#FF0000';
     ctx.fillRect(
-      enemy.x - config.tileSize/2,
-      enemy.y - config.tileSize/2,
+      enemy.x - gameState.player.x + config.width/2 - config.tileSize/2,
+      enemy.y - gameState.player.y + config.height/2 - config.tileSize/2,
       config.tileSize,
       config.tileSize
     );
     
     // 绘制血条
     ctx.fillStyle = '#330000';
-    ctx.fillRect(enemy.x - config.tileSize/2, enemy.y - config.tileSize/2 - 10, config.tileSize, 5);
+    ctx.fillRect(
+      enemy.x - gameState.player.x + config.width/2 - config.tileSize/2,
+      enemy.y - gameState.player.y + config.height/2 - config.tileSize/2 - 10,
+      config.tileSize,
+      5
+    );
     ctx.fillStyle = '#FF0000';
-    ctx.fillRect(enemy.x - config.tileSize/2, enemy.y - config.tileSize/2 - 10, 
-      config.tileSize * (enemy.health / 50), 5);
+    ctx.fillRect(
+      enemy.x - gameState.player.x + config.width/2 - config.tileSize/2,
+      enemy.y - gameState.player.y + config.height/2 - config.tileSize/2 - 10,
+      config.tileSize * (enemy.health / 50),
+      5
+    );
   });
 }
-
-  // 绘制玩家
-  function drawPlayer(ctx) {
-    ctx.fillStyle = '#00FF00';
-    ctx.fillRect(
-      gameState.player.x - config.tileSize/2 + canvasOffsetX,
-      gameState.player.y - config.tileSize/2 + canvasOffsetY,
-      config.tileSize,
-      config.tileSize
-    );
-  }
 
 // 区块管理
 const chunkManager = {
@@ -409,19 +431,6 @@ function generateEnemiesAroundPlayer() {
   chunkManager.loadChunk(playerChunkX, playerChunkY);
 }
 
-  // 绘制资源
-  function drawResources(ctx) {
-    gameState.resources.forEach(resource => {
-      ctx.fillStyle = resource.type === 'wood' ? '#8B4513' : '#808080';
-      ctx.fillRect(
-        resource.x + canvasOffsetX,
-        resource.y + canvasOffsetY,
-        config.tileSize,
-        config.tileSize
-      );
-    });
-  }
-
 // 设置控制
 function setupControls() {
   const keys = { w: false, a: false, s: false, d: false, e: false, b: false };
@@ -488,10 +497,6 @@ function setupControls() {
     if (e.button === 2) gameState.mouse.right = false;
   });
   
-  // 添加画布偏移量
-  let canvasOffsetX = 0;
-  let canvasOffsetY = 0;
-
   // 更新玩家位置
   setInterval(() => {
     const prevChunkX = Math.floor(gameState.player.x / (config.chunkSize * config.tileSize));
@@ -502,10 +507,6 @@ function setupControls() {
     if (keys.s) gameState.player.y += config.playerSpeed;
     if (keys.d) gameState.player.x += config.playerSpeed;
 
-    // 更新画布偏移量
-    canvasOffsetX = config.width/2 - gameState.player.x;
-    canvasOffsetY = config.height/2 - gameState.player.y;
-    
     // 检查是否进入新区块
     const newChunkX = Math.floor(gameState.player.x / (config.chunkSize * config.tileSize));
     const newChunkY = Math.floor(gameState.player.y / (config.chunkSize * config.tileSize));
@@ -519,76 +520,4 @@ function setupControls() {
   }, 1000/60);
 }
 
-// 尝试建造结构
-function tryBuildStructure() {
-  const player = gameState.player;
-  
-  // 检查资源是否足够
-  const requiredResources = {
-    'wall': { wood: 5 },
-    'campfire': { wood: 3, stone: 2 }
-  };
-  
-  const selectedStructure = gameState.player.previewStructure.type;
-  
-  // 检查资源
-  let canBuild = true;
-  for (const [resource, amount] of Object.entries(requiredResources[selectedStructure])) {
-    const count = player.inventory.filter(item => item === resource).length;
-    if (count < amount) {
-      canBuild = false;
-      break;
-    }
-  }
-  
-  if (!canBuild) {
-    alert('资源不足！');
-    return;
-  }
-  
-  // 扣除资源
-  for (const [resource, amount] of Object.entries(requiredResources[selectedStructure])) {
-    for (let i = 0; i < amount; i++) {
-      const index = player.inventory.indexOf(resource);
-      if (index !== -1) {
-        player.inventory.splice(index, 1);
-      }
-    }
-  }
-  
-  // 添加结构
-  gameState.structures.push({
-    type: selectedStructure,
-    x: gameState.mouse.x,
-    y: gameState.mouse.y
-  });
-  
-  updateInventory();
-}
-
-  // 绘制结构
-  function drawStructures(ctx) {
-    gameState.structures.forEach(structure => {
-      ctx.fillStyle = structure.type === 'wall' ? '#654321' : '#8B0000';
-      ctx.fillRect(
-        structure.x - config.tileSize/2 + canvasOffsetX,
-        structure.y - config.tileSize/2 + canvasOffsetY,
-        config.tileSize,
-        config.tileSize
-      );
-    });
-  }
-
-// 绘制建造预览
-function drawPreviewStructure(ctx) {
-  if (gameState.player.buildMode && gameState.player.previewStructure) {
-    ctx.strokeStyle = '#00FF00';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(
-      gameState.player.previewStructure.x - config.tileSize/2,
-      gameState.player.previewStructure.y - config.tileSize/2,
-      config.tileSize,
-      config.tileSize
-    );
-  }
-}
+// 尝试建造
